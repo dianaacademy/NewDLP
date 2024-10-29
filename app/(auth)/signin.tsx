@@ -78,7 +78,7 @@ const LoginScreen = () => {
   };
 
   const handleSignup = () => {
-    router.push('/(auth)/SignupSS');
+    router.push('/(auth)/OTPLogin');
   };
 
   const handleForgot = () => {
