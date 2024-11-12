@@ -7,20 +7,24 @@ import {
     FlatList,
     Image,
     TouchableOpacity,
-    ActivityIndicator
+    ActivityIndicator,
+    Dimensions,
+    ScrollView,
 } from 'react-native';
 import { auth, firestore } from '@/firebaseConfig';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { getItem } from '@/store/storage';
-import RecentCourses from '../component/RecentCourses'
+import AllCourses5 from '../component/RecentCourses';
+import { useFonts } from "expo-font";
 
 interface Course {
     id: string;
     courseName: string;
     thumbnailUrl: string;
-    // Add other course properties as needed
 }
+
+const { width } = Dimensions.get('window');
 
 const MyLearning: React.FC = () => {
     const [courses, setCourses] = useState<Course[]>([]);
@@ -28,13 +32,57 @@ const MyLearning: React.FC = () => {
     const [userName, setUserName] = useState<string>('');
     const router = useRouter();
 
+    const handleView = (courseId: string) => {
+        router.push('/(tabs)/Mylearning');
+    };    
+    const handleViewCourse = (itemId: string) => {
+        // router.push(`/(content)Learning/${itemId}` as any);
+        router.push(`/(tabs)/Mylearning`);
+        
+    };    
+    
+
+    const ProfileRedirect = () => {
+        router.push('/(tabs)/profile');
+    };
+
+    useFonts({
+        'outfit': require('../../assets/fonts/Outfit-Regular.ttf'),
+        'outfit-bold': require('../../assets/fonts/Outfit-Bold.ttf'),
+    });
+
     useEffect(() => {
         const fetchUserInfo = async () => {
             try {
-                const displayName = await getItem('@user_name');
-                setUserName(displayName || 'Student');
+                // Get the current user from Firebase Auth
+                const user = auth.currentUser;
+                if (user) {
+                    // Try to get the name from local storage first
+                    let displayName = await getItem('@user_name');
+                    
+                    // If no name in storage, try to get it from Firebase user
+                    if (!displayName && user.displayName) {
+                        displayName = user.displayName;
+                    }
+                    
+                    // If we have a name, set it
+                    if (displayName) {
+                        setUserName(displayName);
+                    } else {
+                        // If no name found, try to get it from Firestore
+                        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+                        if (userDoc.exists() && userDoc.data().name) {
+                            setUserName(userDoc.data().name);
+                        } else {
+                            setUserName('Student'); // Fallback if no name found
+                        }
+                    }
+                } else {
+                    setUserName('Student');
+                }
             } catch (error) {
                 console.error('Error fetching user info:', error);
+                setUserName('Student');
             }
         };
 
@@ -49,7 +97,7 @@ const MyLearning: React.FC = () => {
                         where('studentId', '==', studentId)
                     );
                     const querySnapshot = await getDocs(q);
-                    
+
                     if (!querySnapshot.empty) {
                         const enrolledCourseIds: string[] = [];
                         querySnapshot.forEach((doc) => {
@@ -75,31 +123,27 @@ const MyLearning: React.FC = () => {
             }
         };
 
-        fetchUserInfo();
-        fetchCourses();
+        Promise.all([fetchUserInfo(), fetchCourses()]);
     }, []);
 
     const renderCourseItem = ({ item }: { item: Course }) => (
-        <View style={styles.courseCard}>
+        <TouchableOpacity style={styles.courseCard} onPress={() => handleViewCourse(item.id)}>
             <Image
-                source={{ 
+                source={{
                     uri: item.thumbnailUrl || 'https://ik.imagekit.io/growthx100/default-image.jpg?updatedAt=1709902412480'
                 }}
                 style={styles.courseImage}
             />
             <View style={styles.courseInfo}>
-                <View style={styles.badgeContainer}>
-                    <Text style={styles.newBadge}>NEW</Text>
-                </View>
                 <Text style={styles.courseTitle}>{item.courseName}</Text>
                 <TouchableOpacity
                     style={styles.resumeButton}
-                    onPress={() => router.push(`/(tabs)/profile`)}
+                    onPress={() => handleViewCourse(item.id)}
                 >
                     <Text style={styles.resumeButtonText}>Resume</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 
     if (loading) {
@@ -112,20 +156,66 @@ const MyLearning: React.FC = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.welcomeText}>Hey! {userName}</Text>
-                <Text style={styles.subTitle}>Resume your Pending Courses</Text>
-            </View>
-            <FlatList
-                data={courses}
-                renderItem={renderCourseItem}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.courseList}
-                showsVerticalScrollIndicator={false}
-            />
+        <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+<View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+    <Text style={styles.welcomeText}>
+        Hey! {userName || 'Student'}
+    </Text>
+    <TouchableOpacity onPress={ProfileRedirect}>
+        <Image 
+            source={require('../../assets/images/user.png')}
+            style={{
+                width: 30,
+                height: 30,
+                marginLeft: 10,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                
+            }}
+               />
+           </TouchableOpacity>
+       </View>
+       <Text style={styles.subTitle}>Resume your Pending Courses</Text>
+      </View>
 
-            <RecentCourses/>
-        </SafeAreaView>
+
+      <TouchableOpacity  onPress={() => handleView}>
+            <View style={styles.imageSection}>
+    <Image style={styles.imageBanner} source={require('../../assets/images/Banner.png')} 
+      
+    />
+  </View>
+  </TouchableOpacity>
+            
+            <View style={styles.section}>
+                <FlatList
+                    data={courses}
+                    renderItem={renderCourseItem}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    snapToInterval={width * 0.75}
+                    decelerationRate="fast"
+                    contentContainerStyle={styles.courseList}
+                />
+            </View>
+            <View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.welcomeText2}>Explore Other Courses</Text>
+              <TouchableOpacity onPress={() => handleView}>
+                  <Text style={styles.welcomeText3}>View all  </Text>
+              </TouchableOpacity>
+             </View>
+          <View style={styles.section}>
+              <AllCourses5 />
+          </View>
+</View>
+
+        </ScrollView>
+    </SafeAreaView>
     );
 };
 
@@ -141,31 +231,48 @@ const styles = StyleSheet.create({
     },
     header: {
         padding: 16,
-        paddingTop:35,
-        fontFamily: 'outfit-bold',
-        
+        paddingTop: 35,
+        fontFamily: 'outfit',
     },
     welcomeText: {
         fontSize: 28,
-        fontWeight: 'bold',
+        color: '#000',
+        fontFamily: 'outfit-bold',
+    },
+    welcomeText2: {
+        fontSize: 28,
+        paddingLeft: 16,
         color: '#000',
         marginBottom: 8,
+        paddingBottom: 20,
+        fontFamily: 'outfit-bold',
+    },
+    welcomeText3: {
+        fontSize: 15,
+        paddingRight: 10,
+        color: '#000',
+        marginBottom: 8,
+        paddingBottom: 20,
         fontFamily: 'outfit',
     },
     subTitle: {
         fontSize: 16,
         color: '#000',
-        marginBottom: 16,
+        fontFamily: 'outfit',
+    },
+    section: {
+        marginBottom: 20,
     },
     courseList: {
-        padding: 16,
-        gap: 16,
+        paddingLeft: 16,
+        paddingBottom: 16,
     },
     courseCard: {
         backgroundColor: '#ffffff',
         borderRadius: 8,
+        width: width * 0.75,
         overflow: 'hidden',
-        marginBottom: 16,
+        marginRight: 16,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
@@ -181,38 +288,42 @@ const styles = StyleSheet.create({
         resizeMode: 'cover',
     },
     courseInfo: {
-        padding: 16,
-    },
-    badgeContainer: {
-        marginBottom: 8,
-    },
-    newBadge: {
-        backgroundColor: '#14b8a6',
-        color: '#ffffff',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 20,
-        fontSize: 12,
-        fontWeight: 'bold',
-        alignSelf: 'flex-start',
+        padding: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
     courseTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontFamily: 'outfit',
         color: '#333333',
-        marginBottom: 12,
     },
     resumeButton: {
         backgroundColor: '#000000',
-        padding: 12,
+        padding: 8,
+        fontFamily: 'outfit-bold',
         borderRadius: 8,
-        alignItems: 'center',
     },
     resumeButtonText: {
         color: '#ffffff',
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 14,
+        fontFamily: 'outfit-bold',
+        
     },
+
+    imageSection:{
+        display: 'flex',
+        alignItems: 'center',
+        
+
+    },
+
+    imageBanner:{ 
+        width: 370,
+        height: 150,
+        borderRadius:15,
+        marginBottom:15
+    }
 });
 
 export default MyLearning;
