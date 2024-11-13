@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity,ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getFirestore, doc, getDoc, collection, getDocs, CollectionReference, QuerySnapshot } from 'firebase/firestore';
 import { FontAwesome } from '@expo/vector-icons';
@@ -26,6 +26,7 @@ const Learning: React.FC = () => {
   const [courseData, setCourseData] = useState<CourseData | null>(null);
   const [showMoreCourseDesc, setShowMoreCourseDesc] = useState(false);
   const db = getFirestore();
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -34,18 +35,18 @@ const Learning: React.FC = () => {
         if (typeof courseId === 'string') {
           const courseRef = doc(db, 'courses', courseId);
           const courseSnapshot = await getDoc(courseRef);
-
+  
           if (courseSnapshot.exists()) {
             const data = courseSnapshot.data() as CourseData;
             const modulesCollectionRef = collection(db, 'courses', courseId, 'modules') as CollectionReference<Module>;
             const modulesSnapshot = await getDocs(modulesCollectionRef);
-
+  
             const modulesData = await Promise.all(
               modulesSnapshot.docs.map(async (moduleDoc) => {
                 const moduleData = moduleDoc.data();
                 const chaptersCollectionRef = collection(db, 'courses', courseId, 'modules', moduleDoc.id, 'chapters');
                 const chaptersSnapshot = await getDocs(chaptersCollectionRef);
-
+  
                 return {
                   id: moduleDoc.id,
                   moduleno: moduleData.moduleno,
@@ -55,7 +56,7 @@ const Learning: React.FC = () => {
                 };
               })
             );
-
+  
             setCourseData({
               ...data,
               modules: modulesData.sort((a, b) => a.moduleno - b.moduleno),
@@ -68,15 +69,34 @@ const Learning: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching course data:', error);
+      } finally {
+        // Ensure loading is set to false at the end
+        setLoading(false);
       }
     };
-
+  
     fetchCourseData();
   }, [courseId]);
+  
 
   const handleBackPress = () => {
     router.back();
   };
+
+  const handleViewChapter = (moduleId: string) => {
+    router.push(`/content/ViewCourse?moduleId=${moduleId}&courseId=${courseId}`as any);
+    console.log(`content/ViewCourse?moduleId=${moduleId}&courseId=${courseId}`)
+};
+
+if (loading) {
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#0000ff" />
+    </View>
+  );
+}
+
+
 
   return (
     <ScrollView style={styles.container}>
@@ -102,6 +122,9 @@ const Learning: React.FC = () => {
           </Text>
           <Text style={styles.sectionTitle}>Course Contents</Text>
           {courseData.modules.map((module) => (
+            <TouchableOpacity
+            key={module.id}
+            onPress={() => handleViewChapter(module.id)}>
             <View key={module.id} style={styles.moduleContainer}>
               <Text style={styles.moduleno}>{module.moduleno}</Text>
               <View style={styles.moduleContentContainer}>
@@ -115,6 +138,7 @@ const Learning: React.FC = () => {
                 />
               </View>
             </View>
+            </TouchableOpacity>
           ))}
         </>
       )}
@@ -128,6 +152,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingHorizontal: 16,
     paddingTop: 30,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backButton: {
     position: 'absolute',
