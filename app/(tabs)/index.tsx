@@ -32,19 +32,22 @@ const MyLearning: React.FC = () => {
     const [userName, setUserName] = useState<string>('');
     const router = useRouter();
 
+
     const handleView = (courseId: string) => {
         router.push('/(tabs)/Mylearning');
-    };    
+    };
+
     const handleViewCourse = (itemId: string) => {
-        // router.push(`/(content)Learning/${itemId}` as any);
-        router.push(`/(tabs)/Mylearning`);
-        
-    };    
+        router.push(`/content/Learning?courseId=${itemId}` as any);
+        console.log(`content/Learning?courseId=${itemId}`)
+    };
     
 
     const ProfileRedirect = () => {
         router.push('/(tabs)/profile');
     };
+
+    
 
     useFonts({
         'outfit': require('../../assets/fonts/Outfit-Regular.ttf'),
