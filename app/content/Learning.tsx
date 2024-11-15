@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity,ActivityInd
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getFirestore, doc, getDoc, collection, getDocs, CollectionReference, QuerySnapshot } from 'firebase/firestore';
 import { FontAwesome } from '@expo/vector-icons';
+import { ChevronLeft,FileStack} from 'lucide-react-native';
 
 
 interface Module {
@@ -101,7 +102,7 @@ if (loading) {
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-        <FontAwesome name="arrow-left" size={24} color="#333" />
+      <ChevronLeft size={24} color="#333" />
       </TouchableOpacity>
       {courseData && (
         <>
@@ -131,11 +132,7 @@ if (loading) {
                 <Text style={styles.moduleTitle}>
                   {module.moduleName} - {module.totalChapters} Chapters
                 </Text>
-                <FontAwesome
-                  name={module.type === 'video' ? 'video-camera' : 'file-text'}
-                  size={24}
-                  color="#333"
-                />
+                {module.type === 'video' ? <FileStack size={24} color="#333" /> : <FileStack size={24} color="#333" />}
               </View>
             </View>
             </TouchableOpacity>

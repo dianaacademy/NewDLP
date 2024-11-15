@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getFirestore, doc, getDoc, collection, getDocs, CollectionReference } from 'firebase/firestore';
 import { FontAwesome, Feather } from '@expo/vector-icons';
 import { auth } from '@/firebaseConfig';
+import { ChevronLeft,  CircleHelp, Grid2x2Check ,FlaskConical,FileChartColumn, TvMinimal } from 'lucide-react-native';
 
 interface Chapter {
   id: string;
@@ -104,6 +105,15 @@ const ViewCourse: React.FC = () => {
     router.back();
   };
 
+  const handleViewContent = (chapterId: string, chapterType: string) => {
+    router.push(
+      `/content/ViewContent?moduleId=${moduleId}&courseId=${courseId}&chapterId=${chapterId}&chapterType=${chapterType}&TotalChapter=${module?.chapters.length}` as any
+    );
+    console.log(
+      `content/ViewContent?moduleId=${moduleId}&courseId=${courseId}&chapterId=${chapterId}&chapterType=${chapterType}&TotalChapter=${module?.chapters.length}`
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -115,44 +125,44 @@ const ViewCourse: React.FC = () => {
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-        <FontAwesome name="arrow-left" size={24} color="#333" />
+        
+        <ChevronLeft size={24} color="#333" />
       </TouchableOpacity>
       {module && (
         <>
           <Text style={styles.moduleTitle}>{module.moduleName}</Text>
-          {module.chapters.map((chapter) => (
-            <TouchableOpacity
-              key={chapter.id}
-              style={[
-                styles.chapterContainer,
-                chapter.completed && styles.completedChapter,
-              ]}
-            >
-              <Text style={styles.chapterno}>{chapter.chapterno}</Text>
-              <View style={styles.chapterContentContainer}>
-                <Text style={styles.chapterName}>{chapter.chapterName}</Text>
-                {chapter.completed ? (
-                  <Feather name="check" size={24} color="#4CAF50" />
-                ) : (
-                  <FontAwesome
-                    name={
-                      chapter.type === 'video'
-                        ? 'video-camera'
-                        : chapter.type === 'quiz'
-                        ? 'question-circle'
-                        : chapter.type === 'match'
-                        ? 'th-large'
-                        : chapter.type === 'lab'
-                        ? 'flask'
-                        : 'file-text'
-                    }
-                    size={24}
-                    color="#333"
-                  />
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+           {module.chapters.map((chapter) => (
+             <TouchableOpacity
+               key={chapter.id}
+               onPress={() => handleViewContent(chapter.id, chapter.type)}
+               style={[
+                 styles.chapterContainer,
+                 chapter.completed && styles.completedChapter,
+               ]}
+             >
+               <Text style={styles.chapterno}>{chapter.chapterno}</Text>
+               <View style={styles.chapterContentContainer}>
+                 <Text style={styles.chapterName}>{chapter.chapterName}</Text>
+                 {chapter.completed ? (
+                   <Feather name="check" size={24} color="#4CAF50" />
+                 ) : (
+                   
+                     
+                       chapter.type === 'video'
+                         ? <TvMinimal size={30} color="#4CAF50" />
+                         : chapter.type === 'quiz'
+                         ? <CircleHelp size={30} color="#000" />
+                         : chapter.type === 'match'
+                         ? <Grid2x2Check size={30} color="#000" />
+                         : chapter.type === 'lab'
+                         ? <FlaskConical size={30} color="#000" />
+                         : <FileChartColumn size={30} color="#000" />
+                    
+                  
+                 )}
+               </View>
+             </TouchableOpacity>
+           ))}
         </>
       )}
     </ScrollView>
