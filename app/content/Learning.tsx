@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity,ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getFirestore, doc, getDoc, collection, getDocs, CollectionReference, QuerySnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, getDocs, CollectionReference } from 'firebase/firestore';
 import { FontAwesome } from '@expo/vector-icons';
-import { ChevronLeft,FileStack} from 'lucide-react-native';
-
+import { ChevronLeft, FileStack } from 'lucide-react-native';
+import Svg, { Circle } from 'react-native-svg';
+import { auth } from '@/firebaseConfig';
 
 interface Module {
   id: string;
@@ -26,6 +27,8 @@ const Learning: React.FC = () => {
   const { courseId } = useLocalSearchParams();
   const [courseData, setCourseData] = useState<CourseData | null>(null);
   const [showMoreCourseDesc, setShowMoreCourseDesc] = useState(false);
+  const [completedChapters, setCompletedChapters] = useState<string[]>([]);
+  const [totalChapters, setTotalChapters] = useState(0);
   const db = getFirestore();
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -62,6 +65,11 @@ const Learning: React.FC = () => {
               ...data,
               modules: modulesData.sort((a, b) => a.moduleno - b.moduleno),
             });
+
+            // Fetch total chapters and completed chapters
+            const allChapters = modulesData.reduce((total, module) => total + module.totalChapters, 0);
+            setTotalChapters(allChapters);
+            await fetchCompletedChapters();
           } else {
             console.log('No such course document!');
           }
@@ -71,42 +79,105 @@ const Learning: React.FC = () => {
       } catch (error) {
         console.error('Error fetching course data:', error);
       } finally {
-        // Ensure loading is set to false at the end
         setLoading(false);
+      }
+    };
+  
+    const fetchCompletedChapters = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser && typeof courseId === 'string') {
+          const userProgressRef = doc(
+            db, 
+            'users', 
+            currentUser.uid, 
+            'progress', 
+            courseId
+          );
+    
+          const userProgressSnapshot = await getDoc(userProgressRef);
+          if (userProgressSnapshot.exists()) {
+            const userData = userProgressSnapshot.data();
+            setCompletedChapters(userData.completedChapters || []);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching completed chapters:', error);
       }
     };
   
     fetchCourseData();
   }, [courseId]);
-  
 
   const handleBackPress = () => {
     router.back();
   };
 
   const handleViewChapter = (moduleId: string) => {
-    router.push(`/content/ViewCourse?moduleId=${moduleId}&courseId=${courseId}`as any);
-    console.log(`content/ViewCourse?moduleId=${moduleId}&courseId=${courseId}`)
-};
+    router.push(`/content/ViewCourse?moduleId=${moduleId}&courseId=${courseId}` as any);
+  };
 
-if (loading) {
-  return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#0000ff" />
-    </View>
-  );
-}
+  const calculateCourseCompletion = () => {
+    const completionPercentage = totalChapters > 0 
+      ? Math.round((completedChapters.length / totalChapters) * 100) 
+      : 0;
+    return completionPercentage;
+  };
 
+  const CourseCompletionCircle = () => {
+    const radius = 15;
+    const strokeWidth = 4;
+    const circumference = 2 * Math.PI * radius;
+    const completionPercentage = calculateCourseCompletion();
+    const dashOffset = circumference - (completionPercentage / 100) * circumference;
+  
+    return (
+      <View style={styles.courseCompletionContainer}>
+        <Svg width={40} height={40}>
+          <Circle
+            cx={20}
+            cy={20}
+            r={radius}
+            fill="none"
+            stroke="#E0E0E0"
+            strokeWidth={strokeWidth}
+          />
+          <Circle
+            cx={20}
+            cy={20}
+            r={radius}
+            fill="none"
+            stroke="#007AFF"
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+          />
+        </Svg>
+        <Text style={styles.completionPercentage}>{completionPercentage}%</Text>
+      </View>
+    );
+  };
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-      <ChevronLeft size={24} color="#333" />
+        <ChevronLeft size={24} color="#333" />
       </TouchableOpacity>
       {courseData && (
         <>
-          <Image source={{ uri: courseData.thumbnailUrl }} style={styles.thumbnailUrl} />
+          <View style={styles.headerContainer}>
+            <Image source={{ uri: courseData.thumbnailUrl }} style={styles.thumbnailUrl} />
+            
+          </View>
           <Text style={styles.title}>{courseData.courseName}</Text>
           <Text style={styles.tutor}>By {courseData.tutorName}</Text>
           <Text style={styles.courseDesc}>
@@ -121,20 +192,24 @@ if (loading) {
             )}
             {showMoreCourseDesc && courseData.courseDesc.slice(120)}
           </Text>
-          <Text style={styles.sectionTitle}>Course Contents</Text>
+          <View style={styles.sectionTitleContainer}>
+  <Text style={styles.sectionTitle}>Course Contents</Text>
+  <CourseCompletionCircle />
+</View>
           {courseData.modules.map((module) => (
             <TouchableOpacity
-            key={module.id}
-            onPress={() => handleViewChapter(module.id)}>
-            <View key={module.id} style={styles.moduleContainer}>
-              <Text style={styles.moduleno}>{module.moduleno}</Text>
-              <View style={styles.moduleContentContainer}>
-                <Text style={styles.moduleTitle}>
-                  {module.moduleName} - {module.totalChapters} Chapters
-                </Text>
-                {module.type === 'video' ? <FileStack size={24} color="#333" /> : <FileStack size={24} color="#333" />}
+              key={module.id}
+              onPress={() => handleViewChapter(module.id)}
+            >
+              <View style={styles.moduleContainer}>
+                <Text style={styles.moduleno}>{module.moduleno}</Text>
+                <View style={styles.moduleContentContainer}>
+                  <Text style={styles.moduleTitle}>
+                    {module.moduleName} - {module.totalChapters} Chapters
+                  </Text>
+                  {module.type === 'video' ? <FileStack size={24} color="#333" /> : <FileStack size={24} color="#333" />}
+                </View>
               </View>
-            </View>
             </TouchableOpacity>
           ))}
         </>
@@ -149,18 +224,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingHorizontal: 16,
     paddingTop: 30,
+    paddingBottom: 40,
+  },
+  sectionTitleContainer:{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  courseCompletionContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completionPercentage: {
+    position: 'absolute',
+    fontSize: 10,
+    fontFamily: 'outfit-bold',
+    color: '#007AFF',
+  },
   backButton: {
     position: 'absolute',
     top: 15,
-    left:0,
+    left: 0,
     zIndex: 1,
-    borderRadius:50,
+    borderRadius: 50,
     backgroundColor: '#fff',
     height: 50,
     width: 50,
@@ -203,7 +301,9 @@ const styles = StyleSheet.create({
   moduleContainer: {
     backgroundColor: '#f4f4f4',
     borderRadius: 8,
-    marginBottom: 12,
+    
+    marginVertical: 5,
+    
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -215,7 +315,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: 32,
     color: '#000',
-
   },
   moduleContentContainer: {
     flex: 1,

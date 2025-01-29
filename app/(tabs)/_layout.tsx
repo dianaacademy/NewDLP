@@ -22,11 +22,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="scheme"
+        name="Community"
         options={{
-          title: "Scheme",
+          title: "Community",
           tabBarActiveTintColor: '#f3a683',
-          tabBarIcon: ({ color }) => <Ionicons size={28} name="calendar-outline" color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="people-outline" color={color} />,
         }}
       />
       <Tabs.Screen

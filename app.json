@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "hardware_garage",
-    "slug": "hardware_garage",
+    "slug": "hardwaregarage",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +19,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.dianaofficialwebsite.hardwaregarage"
     },
     "web": {
       "bundler": "metro",
@@ -34,6 +35,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "d31211ff-c60a-4633-a1a1-6a30b16f4c77"
+      }
     }
   }
 }

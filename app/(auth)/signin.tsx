@@ -20,7 +20,8 @@ import {
 import { doc, setDoc } from 'firebase/firestore';
 
 
-const LoginScreen = () => {
+
+        const LoginScreen = () => {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -139,7 +140,6 @@ const LoginScreen = () => {
             <Text style={styles.loginText}>Login</Text>
           )}
         </TouchableOpacity>
-        
 
 
 
